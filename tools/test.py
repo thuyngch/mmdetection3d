@@ -11,7 +11,7 @@ from mmdet3d.datasets import build_dataloader, build_dataset
 from mmdet3d.models import build_detector
 from mmdet.apis import multi_gpu_test, set_random_seed
 from mmdet.core import wrap_fp16_model
-from tools.fuse_conv_bn import fuse_module
+# from tools.fuse_conv_bn import fuse_module
 
 
 def parse_args():
