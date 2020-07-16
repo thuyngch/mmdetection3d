@@ -7,12 +7,12 @@ from mmdet3d.apis import show_result_meshlab
 # ArgumentParser
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--cfg", type=str, default="configs/pointpillars/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class.py",
+parser.add_argument("--cfg", type=str, default="configs/subset/dataset.py",
                     help="Config file")
 
 parser.add_argument("--idx", type=int, default=0, help="Sample index in the dataset")
 
-parser.add_argument("--outdir", type=int, default='cache/', help="Sample index in the dataset")
+parser.add_argument("--outdir", type=str, default='cache/', help="Path to the output directory")
 
 args = parser.parse_args()
 
