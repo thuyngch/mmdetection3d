@@ -1,42 +1,15 @@
-#------------------------------------------------------------------------------
-#  Libraries
-#------------------------------------------------------------------------------
-import torch
+import torch, math
 import torch.nn as nn
 import torch.nn.functional as F
 
-import math
-from scipy.stats import norm
-
 from mmdet.models.builder import LOSSES
-from mmdet.models.losses.utils import weighted_loss
 from mmdet.models.losses.focal_loss import sigmoid_focal_loss
 
 
-#------------------------------------------------------------------------------
-#  _expand_binary_labels
-#------------------------------------------------------------------------------
-def _expand_binary_labels(labels, num_fg_classes):
-	"""
-	[Input]
-		labels: shape [N], range [0, num_fg_classes] where num_fg_classes stands for class `background`
-		num_fg_classes: number of foreground classes, not include the class `background`
-
-	[Output]
-		onehot_labels: shape [N, num_fg_classes]
-	"""
-	onehot_labels = F.one_hot(labels, num_fg_classes+1)
-	onehot_labels = onehot_labels[:, :-1]	# Ignore class `background` in term of using sigmoid
-	return onehot_labels
-
-
-#------------------------------------------------------------------------------
-#  AutoFocalLoss
-#------------------------------------------------------------------------------
 @LOSSES.register_module
 class AutoFocalLoss(nn.Module):
 
-	def __init__(self, use_sigmoid=False, loss_weight=1.0, gamma=2.0, alpha=0.5, reduction='mean'):
+	def __init__(self, use_sigmoid=False, gamma=1e-3, alpha=0.25, loss_weight=1.0, reduction='mean'):
 		super(AutoFocalLoss, self).__init__()
 		assert use_sigmoid is True, 'Only sigmoid focaloss supported now.'
 		self.use_sigmoid = use_sigmoid
@@ -57,10 +30,18 @@ class AutoFocalLoss(nn.Module):
 			reduction_override if reduction_override else self.reduction)
 
 		if self.use_sigmoid:
-			cls_channels = pred.shape[1]
-			bin_target = _expand_binary_labels(target, cls_channels)
-			bin_target = bin_target.float()
+			# Parse ignored samples
+			if avg_factor is not None:
+				avg_factor -= (target < 0).sum()
+			weight[target < 0] = 0
+			target[target < 0] = 0
 
+			# Expand onehot labels
+			cls_channels = pred.shape[1]
+			bin_target = F.one_hot(target, cls_channels+1)
+			bin_target = bin_target[:, :-1]	# Ignore class `background` in term of using sigmoid
+
+			# Adjust gamma with momentum
 			p = pred.sigmoid()
 			p_score = p * bin_target
 			p_sum = torch.sum(p_score, 1)
@@ -78,6 +59,7 @@ class AutoFocalLoss(nn.Module):
 
 			self.gamma = -math.log(self.p_avg)
 
+			# Compute focal loss
 			loss_cls = self.loss_weight * sigmoid_focal_loss(
 				pred, target, weight,
 				gamma=self.gamma, alpha=self.alpha,

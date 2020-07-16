@@ -12,7 +12,17 @@ model = dict(
             ranges=[[0, -39.68, -1.78, 69.12, 39.68, -1.78]],
             sizes=[[1.6, 3.9, 1.56]],
             rotations=[0, 1.57],
-            reshape_out=True)))
+            reshape_out=True,
+        ),
+        loss_cls=dict(
+            type='AutoFocalLoss',
+            use_sigmoid=True,
+            gamma=1e-3,
+            alpha=0.25,
+            loss_weight=1.0,
+        ),
+    ),
+)
 # model training and testing settings
 train_cfg = dict(
     _delete_=True,
